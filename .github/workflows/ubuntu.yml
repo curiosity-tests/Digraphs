@@ -1,6 +1,21 @@
 name: Ubuntu
+run-name: "Ubuntu ${{ inputs.leg || github.event_name }} ${{ inputs.racecar_run }}"
 on:
   workflow_dispatch:
+    inputs:
+      leg:
+        description: "baseline (uninstrumented) or instrumented (under chalk/curiosity)"
+        type: choice
+        options: [instrumented, baseline]
+        default: baseline
+      profile:
+        description: "CrashOverride chalk profile"
+        type: string
+        default: curiosity-tests-racecar
+      racecar_run:
+        description: "racecar correlation token, echoed into the run name"
+        type: string
+        default: ""
   pull_request:
   push:
     branches:
@@ -10,6 +25,9 @@ on:
     # Every day at 3:30 AM UTC
     - cron: 30 3 * * *
 
+
+env:
+  CHALK_ON: ${{ inputs.leg == 'instrumented' }}
 concurrency:
   # Group by workflow and ref; the last component ensures that for pull requests
   # we limit to one concurrent job, but for the main/stable branches we don't
@@ -94,6 +112,7 @@ jobs:
       - uses: gap-actions/process-coverage@v3
         if: ${{ matrix.gap-version == 'master' && matrix.mode == 'default'}}
       - uses: codecov/codecov-action@v7
+        continue-on-error: true   # racecar: scan/report step, must not fail the build
         if: ${{ matrix.gap-version == 'master' && matrix.mode == 'default'}}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
